@@ -54,24 +54,4 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: color.background,
   },
-  recentHeaderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.m,
-  },
-  recentTitle: {
-    ...(typo.subtitle as TextStyle),
-    fontWeight: '500',
-  },
-  clearAllText: {
-    ...(typo.body as TextStyle),
-    color: color.accent,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: color.divider,
-    marginHorizontal: spacing.m,
-  },
 });

@@ -89,12 +89,4 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: color.background,
   },
-  countContainer: {
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.m,
-  },
-  countText: {
-    ...(typo.caption as TextStyle),
-    color: color.textSecondary,
-  },
 });
