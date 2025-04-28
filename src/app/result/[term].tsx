@@ -149,17 +149,19 @@ export default function ResultsScreenContent() {
 
   const totalCount = data?.pages[0]?.total_count ?? 0;
 
+  const onEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage]);
+
   return (
     <View style={styles.container}>
       <RepositoryItems
         repositories={repositories}
         totalCount={totalCount}
         onItemPress={handlePressItem}
-        onEndReached={() => {
-          if (hasNextPage && !isFetchingNextPage) {
-            fetchNextPage();
-          }
-        }}
+        onEndReached={onEndReached}
       />
     </View>
   );
