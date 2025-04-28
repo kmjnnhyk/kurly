@@ -15,6 +15,7 @@ import {
   FlatList,
   type TextStyle,
   type ListRenderItemInfo,
+  ActivityIndicator,
 } from 'react-native';
 
 /**
@@ -33,6 +34,7 @@ interface RepositoryItemsProps {
    * @param {Repository} repository - 클릭된 저장소 데이터
    */
   onItemPress?: (repository: Repository) => void;
+  onEndReached?: () => void;
 }
 
 /**
@@ -51,12 +53,14 @@ interface RepositoryItemsProps {
  *   repositories={searchResults}
  *   totalCount={266714}
  *   onItemPress={(repo) => navigateToDetails(repo)}
+ *  onEndReached={() => loadMoreResults()}
  * />
  */
 export const RepositoryItems: React.FC<RepositoryItemsProps> = ({
   repositories,
   totalCount,
   onItemPress,
+  onEndReached,
 }) => {
   /**
    * 개별 저장소 항목을 렌더링하는 함수
@@ -92,6 +96,15 @@ export const RepositoryItems: React.FC<RepositoryItemsProps> = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         accessibilityLabel="저장소 검색 결과 목록"
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          <ActivityIndicator
+            style={styles.footerLoading}
+            size="small"
+            color={color.iconGray}
+          />
+        }
       />
     </View>
   );
@@ -130,5 +143,12 @@ const styles = StyleSheet.create({
    */
   listContent: {
     paddingBottom: spacing.m,
+  },
+
+  /**
+   * 로딩 인디케이터 스타일
+   */
+  footerLoading: {
+    marginVertical: spacing.m,
   },
 });
