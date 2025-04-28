@@ -9,8 +9,14 @@ import {
 } from 'react-native';
 import { RepositoryItems } from '@/ui/organism/repositoryItems';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import {
+  type InfiniteData,
+  type QueryFunctionContext,
+  useInfiniteQuery,
+} from '@tanstack/react-query';
 import { spacing } from '@/ui/constants/size';
+
+const GITHUB_REQUEST_LIMIT = 1000;
 
 interface GitHubRepoOwner {
   login: string;
@@ -34,37 +40,77 @@ interface RepositoryWithUrl extends Repository {
   url: string;
 }
 
+const fetchRepositories = async ({
+  queryKey,
+  pageParam = 1,
+}: {
+  queryKey: readonly [string, string];
+  pageParam?: number;
+}): Promise<GitHubSearchResponse> => {
+  const [, term] = queryKey;
+
+  if (!term) {
+    throw new Error('Search term is required.');
+  }
+
+  const baseUrl = process.env.EXPO_PUBLIC_GITHUB_API_BASE_URL;
+  if (!baseUrl) {
+    throw new Error('API base URL is not configured.');
+  }
+
+  const url = `${baseUrl}/search/repositories?q=${encodeURIComponent(term)}&page=${pageParam}`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
+  }
+  return response.json();
+};
+
 export default function ResultsScreenContent() {
   const { term } = useLocalSearchParams<{ term: string }>();
   const router = useRouter();
 
-  const fetchRepositories = async (
-    term: string,
-  ): Promise<GitHubSearchResponse> => {
-    if (!term) {
-      throw new Error('Search term is required.');
-    }
-
-    const baseUrl = process.env.EXPO_PUBLIC_GITHUB_API_BASE_URL;
-    if (!baseUrl) {
-      throw new Error('API base URL is not configured.');
-    }
-
-    const url = `${baseUrl}/search/repositories?q=${encodeURIComponent(term)}&page=1`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    return response.json();
-  };
-
-  const { data, error, isLoading } = useQuery<GitHubSearchResponse, Error>({
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery<
+    GitHubSearchResponse,
+    Error,
+    InfiniteData<GitHubSearchResponse>,
+    readonly [string, string],
+    number
+  >({
     queryKey: ['repositories', term || ''],
-    queryFn: () => fetchRepositories(term || ''),
+    queryFn: (
+      context: QueryFunctionContext<readonly [string, string], number>,
+    ) =>
+      fetchRepositories({
+        queryKey: context.queryKey,
+        pageParam: context.pageParam,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages, lastPageParam) => {
+      const totalFetched = allPages.reduce(
+        (acc, page) => acc + page.items.length,
+        0,
+      );
+      const totalCount = lastPage.total_count;
+      const nextPage = lastPageParam + 1;
+
+      if (totalFetched < totalCount && totalFetched < GITHUB_REQUEST_LIMIT) {
+        return nextPage;
+      }
+      return undefined;
+    },
     enabled: !!term,
   });
 
+  // handlePressItem (기존과 동일)
   const handlePressItem = (repository: RepositoryWithUrl) => {
     const encodedUrl = encodeURIComponent(repository.url);
     const encodedTitle = encodeURIComponent(repository.name);
@@ -74,6 +120,7 @@ export default function ResultsScreenContent() {
     });
   };
 
+  // 초기 로딩 상태 처리 (기존과 동일)
   if (isLoading) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -92,15 +139,17 @@ export default function ResultsScreenContent() {
   }
 
   const repositories: RepositoryWithUrl[] =
-    data?.items.map((item) => ({
-      id: String(item.id),
-      name: item.name,
-      owner: item.owner.login,
-      avatarUrl: item.owner.avatar_url,
-      url: item.html_url,
-    })) ?? [];
+    data?.pages.flatMap((page) =>
+      page.items.map((item) => ({
+        id: String(item.id),
+        name: item.name,
+        owner: item.owner.login,
+        avatarUrl: item.owner.avatar_url,
+        url: item.html_url,
+      })),
+    ) ?? [];
 
-  const totalCount = data?.total_count ?? 0;
+  const totalCount = data?.pages[0]?.total_count ?? 0;
 
   return (
     <View style={styles.container}>
@@ -108,6 +157,11 @@ export default function ResultsScreenContent() {
         repositories={repositories}
         totalCount={totalCount}
         onItemPress={handlePressItem}
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
       />
     </View>
   );
@@ -127,5 +181,6 @@ const styles = StyleSheet.create({
     fontSize: (typo.body as TextStyle).fontSize,
     textAlign: 'center',
     marginBottom: spacing.s,
+    color: color.textTertiary,
   },
 });
