@@ -1,81 +1,104 @@
 import type { Repository } from '@/ui/molecules/repositoryItem';
-import { color } from '@/ui/constants/theme';
-import { View, StyleSheet, StatusBar, type TextStyle } from 'react-native';
+import { color, typo } from '@/ui/constants/theme';
+import {
+  View,
+  StyleSheet,
+  Text,
+  ActivityIndicator,
+  type TextStyle,
+} from 'react-native';
 import { RepositoryItems } from '@/ui/organism/repositoryItems';
+import { useLocalSearchParams } from 'expo-router';
+import { useQuery, QueryClientProvider } from '@tanstack/react-query';
+import { spacing } from '@/ui/constants/size';
 
-// TODO: display search results as a list #14
-// https://github.com/kmjnnhyk/kurly/issues/14
-const FAKE_RESULTS: Repository[] = [
-  {
-    id: '1',
-    name: 'swift',
-    owner: 'apple',
-    avatarUrl: 'https://via.placeholder.com/40',
-  },
-  {
-    id: '2',
-    name: 'swift',
-    owner: 'openstack',
-    avatarUrl: 'https://via.placeholder.com/40',
-  },
-  {
-    id: '3',
-    name: 'swift',
-    owner: 'tensorflow',
-    avatarUrl: 'https://via.placeholder.com/40',
-  },
-  {
-    id: '4',
-    name: 'SwiftyJSON',
-    owner: 'SwiftyJSON',
-    avatarUrl: 'https://via.placeholder.com/40',
-  },
-  {
-    id: '5',
-    name: 'SwiftGuide',
-    owner: 'ipader',
-    avatarUrl: 'https://via.placeholder.com/40',
-  },
-  {
-    id: '6',
-    name: 'SwifterSwift',
-    owner: 'SwifterSwift',
-    avatarUrl: 'https://via.placeholder.com/40',
-  },
-  {
-    id: '7',
-    name: 'SwiftLint',
-    owner: 'realm',
-    avatarUrl: 'https://via.placeholder.com/40',
-  },
-  {
-    id: '8',
-    name: 'Swift',
-    owner: 'iOS-Swift-Developers',
-    avatarUrl: 'https://via.placeholder.com/40',
-  },
-];
+interface GitHubRepoOwner {
+  login: string;
+  avatar_url: string;
+}
 
-export default function ResultsScreen() {
-  // TODO: show total number of search results #15
-  // https://github.com/kmjnnhyk/kurly/issues/15
-  const totalCount = 266714;
+interface GitHubRepoItem {
+  id: number;
+  name: string;
+  owner: GitHubRepoOwner;
+  // 필요한 다른 필드 추가 가능
+}
+
+interface GitHubSearchResponse {
+  total_count: number;
+  incomplete_results: boolean;
+  items: GitHubRepoItem[];
+}
+
+export default function ResultsScreenContent() {
+  const { term } = useLocalSearchParams<{ term: string }>();
+
+  // API 호출 함수 (첫 페이지만 가져옴)
+  const fetchRepositories = async (
+    term: string,
+  ): Promise<GitHubSearchResponse> => {
+    if (!term) {
+      throw new Error('Search term is required.');
+    }
+
+    const baseUrl = process.env.EXPO_PUBLIC_GITHUB_API_BASE_URL;
+    if (!baseUrl) {
+      throw new Error('API base URL is not configured.');
+    }
+
+    // TODO: prefetch next page during scrolling #18
+    // https://github.com/kmjnnhyk/kurly/issues/18
+    const url = `${baseUrl}/search/repositories?q=${encodeURIComponent(term)}&page=1`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return response.json();
+  };
+
+  const { data, error, isLoading } = useQuery<GitHubSearchResponse, Error>({
+    queryKey: ['repositories', term || ''],
+    queryFn: () => fetchRepositories(term || ''),
+    enabled: !!term,
+  });
 
   const handlePressItem = (repository: Repository) => {
     // TODO: open selected repository in webview #17
-    // https://github.com/kmjnnhyk/kurly/issues/17
     console.log(`${repository.name} pressed:`);
   };
 
-  // TODO: show loading state when loading next page #19
-  // https://github.com/kmjnnhyk/kurly/issues/19
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color={color.iconGray} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <Text style={styles.errorText}>데이터를 불러오는데 실패했습니다.</Text>
+        <Text style={styles.errorText}>{error.message}</Text>
+      </View>
+    );
+  }
+
+  const repositories =
+    data?.items.map((item) => ({
+      id: String(item.id),
+      name: item.name,
+      owner: item.owner.login,
+      avatarUrl: item.owner.avatar_url,
+    })) ?? [];
+
+  const totalCount = data?.total_count ?? 0;
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      {/* TODO: prefetch next page during scrolling #18 */}
-      {/* https://github.com/kmjnnhyk/kurly/issues/18 */}
       <RepositoryItems
-        repositories={FAKE_RESULTS}
+        repositories={repositories}
         totalCount={totalCount}
         onItemPress={handlePressItem}
       />
@@ -87,5 +110,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: color.background,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: (typo.body as TextStyle).fontSize,
+    textAlign: 'center',
+    marginBottom: spacing.s,
   },
 });

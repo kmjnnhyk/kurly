@@ -13,11 +13,13 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchHeader } from '@/shared/searchHeader';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const queryClient = new QueryClient();
 
   const [loaded] = useFonts({
     SpaceMono: require('../../assets/fonts/SpaceMono-Regular.ttf'),
@@ -34,12 +36,14 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <StatusBar style="auto" />
-        <SearchHeader />
-        <Stack screenOptions={{ headerShown: false }} />
-      </SafeAreaView>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <SafeAreaView style={{ flex: 1 }}>
+          <StatusBar style="auto" />
+          <SearchHeader />
+          <Stack screenOptions={{ headerShown: false }} />
+        </SafeAreaView>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
