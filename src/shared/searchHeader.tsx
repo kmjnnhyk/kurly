@@ -17,6 +17,7 @@ import { color, typo } from '../ui/constants/theme';
 import { spacing, radius } from '../ui/constants/size';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useSearchQueryStore } from '@/hooks/useSearchQueryStore';
 
 /**
  * 검색 헤더 컴포넌트
@@ -31,6 +32,7 @@ import { useRouter } from 'expo-router';
  */
 export const SearchHeader: React.FC = () => {
   const router = useRouter();
+  const { storeSearchQuery } = useSearchQueryStore();
 
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -41,6 +43,7 @@ export const SearchHeader: React.FC = () => {
 
   const handleSubmit = () => {
     if (value.trim()) {
+      storeSearchQuery(value);
       router.push({
         pathname: '/result/[term]',
         params: { term: value },

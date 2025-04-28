@@ -1,6 +1,5 @@
 import type { Repository } from '@/ui/molecules/repositoryItem';
-import { spacing } from '@/ui/constants/size';
-import { color, typo } from '@/ui/constants/theme';
+import { color } from '@/ui/constants/theme';
 import { View, StyleSheet, StatusBar, type TextStyle } from 'react-native';
 import { RepositoryItems } from '@/ui/organism/repositoryItems';
 

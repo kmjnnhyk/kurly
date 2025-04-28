@@ -1,27 +1,32 @@
-import { color, typo } from '@/ui/constants/theme';
+import { color } from '@/ui/constants/theme';
 import { RecentSearchItems } from '@/ui/organism/recentSearchItems';
-import { spacing } from '@/ui/constants/size';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { View, StyleSheet, type TextStyle } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { useSearchQueryStore } from '@/hooks/useSearchQueryStore';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const {
+    loading,
+    getSearchQueries,
+    initializeStore,
+    removeSearchQuery,
+    clearSearchQueries,
+  } = useSearchQueryStore();
 
-  // TODO: sort recent searches by date in descending order #7
-  // https://github.com/kmjnnhyk/kurly/issues/7
-  const [recentSearches, setRecentSearches] = React.useState(['Swift']);
+  React.useEffect(() => {
+    initializeStore();
+  }, [initializeStore]);
 
-  const handleRemoveItem = (index: number) => {
-    // TODO: enable deleting individual or all recent searches #8
-    // https://github.com/kmjnnhyk/kurly/issues/8
-    const newSearches = [...recentSearches];
-    newSearches.splice(index, 1);
-    setRecentSearches(newSearches);
+  const queries = getSearchQueries();
+
+  const handleRemoveItem = (query: string) => {
+    removeSearchQuery(query);
   };
 
   const handleClearAll = () => {
-    setRecentSearches([]);
+    clearSearchQueries();
   };
 
   const handleSearchPress = (searchTerm: string) => {
@@ -39,12 +44,14 @@ export default function HomeScreen() {
     <View style={styles.container}>
       {/* TODO: show up to 10 recent searches when query is empty #6
       {/* https://github.com/kmjnnhyk/kurly/issues/6 */}
-      <RecentSearchItems
-        recentSearches={recentSearches}
-        onRemoveItem={handleRemoveItem}
-        onClearAll={handleClearAll}
-        onSearchPress={handleSearchPress}
-      />
+      {!loading && (
+        <RecentSearchItems
+          recentSearches={queries}
+          onRemoveItem={handleRemoveItem}
+          onClearAll={handleClearAll}
+          onSearchPress={handleSearchPress}
+        />
+      )}
     </View>
   );
 }
