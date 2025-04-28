@@ -25,7 +25,7 @@ interface QueryStore {
 export const useSearchQueryStore = create<QueryStore>((set, get) => ({
   queries: [],
   queriesMap: new Map<string, Date>(),
-  loading: false,
+  loading: true,
 
   _loadQueriesMap: async () => {
     const jsonValue = await AsyncStorage.getItem('searchQueries');
@@ -60,7 +60,6 @@ export const useSearchQueryStore = create<QueryStore>((set, get) => ({
   },
 
   initializeStore: async () => {
-    set({ loading: true });
     try {
       const map = await get()._loadQueriesMap();
       get()._updateQueriesFromMap(map);
@@ -73,8 +72,18 @@ export const useSearchQueryStore = create<QueryStore>((set, get) => ({
 
   storeSearchQuery: async (query: string) => {
     try {
+      const normalizedQuery = query.toLowerCase();
+      const currentMap = get().queriesMap;
+
+      if (currentMap.has(normalizedQuery)) {
+        const map = await get()._loadQueriesMap();
+        map.set(normalizedQuery, new Date());
+        await get()._saveQueriesMap(map);
+        return;
+      }
+
       const map = await get()._loadQueriesMap();
-      map.set(query.toLowerCase(), new Date());
+      map.set(normalizedQuery, new Date());
       await get()._saveQueriesMap(map);
       get()._updateQueriesFromMap(map);
     } catch (error) {
