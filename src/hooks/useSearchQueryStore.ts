@@ -65,8 +65,8 @@ export const useSearchQueryStore = create<QueryStore>((set, get) => ({
       get()._updateQueriesFromMap(map);
       set({ loading: false });
     } catch (error) {
-      console.error('초기화 실패:', error);
       set({ loading: false });
+      throw new Error('초기화 실패');
     }
   },
 
@@ -87,7 +87,7 @@ export const useSearchQueryStore = create<QueryStore>((set, get) => ({
       await get()._saveQueriesMap(map);
       get()._updateQueriesFromMap(map);
     } catch (error) {
-      console.error('검색어 저장 실패:', error);
+      throw new Error('검색어 저장 실패');
     }
   },
 
@@ -98,7 +98,7 @@ export const useSearchQueryStore = create<QueryStore>((set, get) => ({
       await get()._saveQueriesMap(map);
       get()._updateQueriesFromMap(map);
     } catch (error) {
-      console.error('검색어 삭제 실패:', error);
+      throw new Error('검색어 삭제 실패');
     }
   },
 
@@ -107,7 +107,7 @@ export const useSearchQueryStore = create<QueryStore>((set, get) => ({
       await AsyncStorage.removeItem('searchQueries');
       set({ queries: [], queriesMap: new Map<string, Date>() });
     } catch (error) {
-      console.error('검색어 전체 삭제 실패:', error);
+      throw new Error('검색어 전체 삭제 실패');
     }
   },
 }));

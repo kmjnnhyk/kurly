@@ -12,12 +12,14 @@ import {
   TouchableOpacity,
   type TextStyle,
   Keyboard,
+  FlatList,
 } from 'react-native';
 import { color, typo } from '../ui/constants/theme';
 import { spacing, radius } from '../ui/constants/size';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useSearchQueryStore } from '@/hooks/useSearchQueryStore';
+import { useDebounce } from '@/hooks/useDebounce';
 
 /**
  * 검색 헤더 컴포넌트
@@ -32,10 +34,35 @@ import { useSearchQueryStore } from '@/hooks/useSearchQueryStore';
  */
 export const SearchHeader: React.FC = () => {
   const router = useRouter();
-  const { storeSearchQuery } = useSearchQueryStore();
+  const { queries, storeSearchQuery } = useSearchQueryStore();
 
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+
+  const debouncedValue = useDebounce(value, 300);
+  const filteredSuggestions = useMemo(() => {
+    if (!isFocused || debouncedValue.trim().length === 0) {
+      return [];
+    }
+
+    const normalizedInput = debouncedValue.toLowerCase().trim();
+    return queries
+      .filter((item) => item.query.toLowerCase().includes(normalizedInput))
+      .sort((a, b) => {
+        const aStartsWith = a.query.toLowerCase().startsWith(normalizedInput);
+        const bStartsWith = b.query.toLowerCase().startsWith(normalizedInput);
+        if (aStartsWith && !bStartsWith) return -1;
+        if (!aStartsWith && bStartsWith) return 1;
+        return b.date.getTime() - a.date.getTime();
+      })
+      .slice(0, 10);
+  }, [debouncedValue, isFocused, queries]);
+
+  const formatDate = (date: Date): string => {
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month.toString().padStart(2, '0')}. ${day.toString().padStart(2, '0')}.`;
+  };
 
   const handleChangeText = (text: string) => {
     setValue(text);
@@ -48,6 +75,7 @@ export const SearchHeader: React.FC = () => {
         pathname: '/result/[term]',
         params: { term: value },
       });
+      Keyboard.dismiss();
     }
   };
 
@@ -65,6 +93,17 @@ export const SearchHeader: React.FC = () => {
 
   const handleCancel = () => {
     setValue('');
+    setIsFocused(false);
+    Keyboard.dismiss();
+  };
+
+  const handleSelectSuggestion = (query: string) => {
+    setValue(query);
+    storeSearchQuery(query);
+    router.push({
+      pathname: '/result/[term]',
+      params: { term: query },
+    });
     setIsFocused(false);
     Keyboard.dismiss();
   };
@@ -135,16 +174,28 @@ export const SearchHeader: React.FC = () => {
         {/* 포커스 시 나타나는 전체 화면 오버레이 */}
         {isFocused && value.length > 0 && (
           <View style={styles.fullScreenOverlay}>
-            {/* 검색어 표시 영역 */}
-            <View style={styles.searchTermContainer}>
-              <Text style={styles.searchTermText}>{value}</Text>
-              <Text style={styles.searchDateText}>03. 09.</Text>
-            </View>
-
-            {/* 검색 결과 컨텐츠 영역 - 필요에 따라 별도 컴포넌트로 분리 가능 */}
-            <View style={styles.searchResultsContainer}>
-              {/* 여기에 검색 결과 목록이 표시됩니다 */}
-            </View>
+            {filteredSuggestions.length > 0 ? (
+              <FlatList
+                data={filteredSuggestions} // useMemo로 계산된 목록 사용
+                keyExtractor={(item) => item.query}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.searchTermContainer}
+                    onPress={() => handleSelectSuggestion(item.query)}
+                  >
+                    <Text style={styles.searchTermText}>{item.query}</Text>
+                    <Text style={styles.searchDateText}>
+                      {formatDate(item.date)}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                keyboardShouldPersistTaps="handled"
+              />
+            ) : (
+              <View style={styles.searchTermContainer}>
+                <Text style={styles.searchTermText}>{value}</Text>
+              </View>
+            )}
           </View>
         )}
       </View>
