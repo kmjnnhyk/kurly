@@ -29,6 +29,8 @@ export interface Repository {
   owner: string;
   /** 저장소 아바타 이미지 URL */
   avatarUrl: string;
+  /** 저장소 URL */
+  url: string;
 }
 
 /**
@@ -36,7 +38,7 @@ export interface Repository {
  * Repository에서 'id'를 제외한 속성을 상속받습니다.
  * @interface
  */
-interface RepositoryItemProps extends Omit<Repository, 'id'> {
+interface RepositoryItemProps extends Omit<Repository, 'id' | 'url'> {
   /**
    * 항목 클릭 핸들러 함수
    * 제공되지 않으면 항목은 클릭할 수 없습니다.

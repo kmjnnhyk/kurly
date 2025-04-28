@@ -8,8 +8,8 @@ import {
   type TextStyle,
 } from 'react-native';
 import { RepositoryItems } from '@/ui/organism/repositoryItems';
-import { useLocalSearchParams } from 'expo-router';
-import { useQuery, QueryClientProvider } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { spacing } from '@/ui/constants/size';
 
 interface GitHubRepoOwner {
@@ -21,7 +21,7 @@ interface GitHubRepoItem {
   id: number;
   name: string;
   owner: GitHubRepoOwner;
-  // 필요한 다른 필드 추가 가능
+  html_url: string;
 }
 
 interface GitHubSearchResponse {
@@ -30,10 +30,14 @@ interface GitHubSearchResponse {
   items: GitHubRepoItem[];
 }
 
+interface RepositoryWithUrl extends Repository {
+  url: string;
+}
+
 export default function ResultsScreenContent() {
   const { term } = useLocalSearchParams<{ term: string }>();
+  const router = useRouter();
 
-  // API 호출 함수 (첫 페이지만 가져옴)
   const fetchRepositories = async (
     term: string,
   ): Promise<GitHubSearchResponse> => {
@@ -46,8 +50,6 @@ export default function ResultsScreenContent() {
       throw new Error('API base URL is not configured.');
     }
 
-    // TODO: prefetch next page during scrolling #18
-    // https://github.com/kmjnnhyk/kurly/issues/18
     const url = `${baseUrl}/search/repositories?q=${encodeURIComponent(term)}&page=1`;
 
     const response = await fetch(url);
@@ -63,9 +65,13 @@ export default function ResultsScreenContent() {
     enabled: !!term,
   });
 
-  const handlePressItem = (repository: Repository) => {
-    // TODO: open selected repository in webview #17
-    console.log(`${repository.name} pressed:`);
+  const handlePressItem = (repository: RepositoryWithUrl) => {
+    const encodedUrl = encodeURIComponent(repository.url);
+    const encodedTitle = encodeURIComponent(repository.name);
+    router.push({
+      pathname: '/result/webviewModal',
+      params: { url: encodedUrl, title: encodedTitle },
+    });
   };
 
   if (isLoading) {
@@ -85,12 +91,13 @@ export default function ResultsScreenContent() {
     );
   }
 
-  const repositories =
+  const repositories: RepositoryWithUrl[] =
     data?.items.map((item) => ({
       id: String(item.id),
       name: item.name,
       owner: item.owner.login,
       avatarUrl: item.owner.avatar_url,
+      url: item.html_url,
     })) ?? [];
 
   const totalCount = data?.total_count ?? 0;
