@@ -110,7 +110,6 @@ export default function ResultsScreenContent() {
     enabled: !!term,
   });
 
-  // handlePressItem (기존과 동일)
   const handlePressItem = (repository: RepositoryWithUrl) => {
     const encodedUrl = encodeURIComponent(repository.url);
     const encodedTitle = encodeURIComponent(repository.name);
@@ -120,7 +119,6 @@ export default function ResultsScreenContent() {
     });
   };
 
-  // 초기 로딩 상태 처리 (기존과 동일)
   if (isLoading) {
     return (
       <View style={[styles.container, styles.center]}>
